@@ -1,12 +1,13 @@
 import ctypes
 import sys
 import threading
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import webview
 
-APP_TITLE = "分割Canva文案"
+APP_TITLE = "分割Canva文案 · 核对v37"
 APP_W = 1200
 APP_H = 1000
 ROOT = Path(__file__).resolve().parent
@@ -30,6 +31,11 @@ class RECT(ctypes.Structure):
 class QuietHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        super().end_headers()
 
     def log_message(self, format, *args):
         return
@@ -141,11 +147,39 @@ class JsApi:
         return {"ok": True, "path": str(path)}
 
 
+def close_existing():
+    user32 = ctypes.windll.user32
+    titles = (
+        APP_TITLE,
+        "分割Canva文案 · 核对v36",
+        "分割Canva文案 · 核对v35",
+        "分割Canva文案 · 核对v34",
+        "分割Canva文案 · 核对v33",
+        "分割Canva文案 · 核对v32",
+        "分割Canva文案 · 核对v31",
+        "分割Canva文案 · 核对v30",
+        "分割Canva文案 · 核对v29",
+        "分割Canva文案 · 核对v28",
+        "分割Canva文案 · 核对v27",
+        "分割Canva文案 · 核对v26",
+        "分割Canva文案 · 核对v25",
+        "分割Canva文案 · 核对v24",
+        "分割Canva文案",
+        "分割文案",
+    )
+    for title in titles:
+        hwnd = user32.FindWindowW(None, title)
+        if not hwnd:
+            continue
+        user32.PostMessageW(hwnd, 0x0010, 0, 0)
+        for _ in range(25):
+            time.sleep(0.1)
+            if not user32.FindWindowW(None, title):
+                break
+
+
 def main():
-    existing = ctypes.windll.user32.FindWindowW(None, APP_TITLE)
-    if existing:
-        bring_to_front(existing)
-        return
+    close_existing()
 
     index = ROOT / "index.html"
     if not index.exists():

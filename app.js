@@ -3,9 +3,12 @@
     const LEGACY_STORAGE_KEY = 'canva-script.split-copy.v1';
     const DEFAULT_TARGET = 24;
     const DEFAULT_SETS = 5;
-    const EMPTY_LEFT_ROWS = 16;
+    const EMPTY_LEFT_ROWS = 10;
     const MAX_SETS = 20;
     const MAX_TARGET = 999;
+    const ROW_H = 35;
+    const COL_TITLE_W = 120;
+    const COL_CONTENT_W = 150;
 
     const el = {
         projectName: document.getElementById('projectName'),
@@ -240,15 +243,24 @@
         return headers;
     }
 
+    function titleColumn() {
+        return { type: 'text', width: COL_TITLE_W };
+    }
+
+    function contentColumn() {
+        return { type: 'text', width: COL_CONTENT_W };
+    }
+
     function rightColumns(sets) {
         const columns = [];
         for (let i = 0; i < sets; i += 1) {
-            columns.push(
-                { width: 140, copyable: true, renderer: cellTitleRenderer },
-                { width: 220, copyable: true, renderer: cellTitleRenderer }
-            );
+            columns.push(titleColumn(), contentColumn());
         }
         return columns;
+    }
+
+    function rightTableWidth(sets) {
+        return 36 + Math.max(1, Number(sets) || 1) * (COL_TITLE_W + COL_CONTENT_W);
     }
 
     function csvEscape(value) {
@@ -356,6 +368,8 @@
                     colHeaders: rightHeaders(sets),
                     columns: rightColumns(sets),
                     stretchH: 'none',
+                    width: rightTableWidth(sets),
+                    height: 'auto',
                 });
             }
             rightHot.loadData(grid);
@@ -390,8 +404,13 @@
         const list = Array.isArray(rows)
             ? rows.map((r) => [r[0] != null ? String(r[0]) : '', r[1] != null ? String(r[1]) : ''])
             : [];
-        while (list.length < EMPTY_LEFT_ROWS) list.push(['', '']);
-        return list;
+        const filled = list.filter(isFilledRow);
+        const out = filled.length ? filled.slice() : [];
+        while (out.length < filled.length + EMPTY_LEFT_ROWS) out.push(['', '']);
+        if (!out.length) {
+            while (out.length < EMPTY_LEFT_ROWS) out.push(['', '']);
+        }
+        return out;
     }
 
     function getSelectedRowCount(instance) {
@@ -501,21 +520,16 @@
 
     function sharedHotSettings() {
         return {
+            tableClassName: 'app-handsontable',
             className: 'htLeft htMiddle',
-            stretchH: 'all',
             height: '100%',
-            rowHeights: 35,
+            rowHeights: ROW_H,
             columnHeaderHeight: 28,
+            rowHeaderWidth: 36,
             renderAllRows: true,
             allowInsertRow: true,
             allowRemoveRow: true,
-            wordWrap: false,
-            autoRowSize: false,
-            enterBeginsEditing: false,
-            copyPaste: true,
-            fillHandle: true,
-            undo: true,
-            outsideClickDeselects: false,
+            stretchH: 'none',
             licenseKey: 'non-commercial-and-evaluation',
         };
     }
@@ -551,12 +565,19 @@
         return true;
     }
 
-    function isNativeTextField(target) {
+    function isHotSurface(target) {
         if (!target) return false;
+        if (target.classList && (target.classList.contains('handsontableInput') || target.classList.contains('handsontableInputHolder'))) {
+            return true;
+        }
+        return !!(target.closest && target.closest('#leftHot, #rightHot, .handsontable, .handsontableInputHolder, .htContextMenu'));
+    }
+
+    function isNativeTextField(target) {
+        if (!target || isHotSurface(target)) return false;
         if (target.isContentEditable) return true;
         const tag = String(target.tagName || '').toUpperCase();
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-        return !!(target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+        return tag === 'INPUT' || tag === 'SELECT';
     }
 
     function releaseHot() {
@@ -840,73 +861,20 @@
         }, true);
     }
 
-    function cellTitleRenderer(instance, td, row, col, prop, value) {
-        Handsontable.renderers.TextRenderer.apply(this, arguments);
-        td.title = value == null ? '' : String(value);
-    }
-
-    function markEditing(container, on) {
-        if (!container) return;
-        container.classList.toggle('is-editing', !!on);
-        const pane = container.closest('.alloc-left, .alloc-right');
-        if (pane) pane.classList.toggle('is-editing', !!on);
-    }
-
-    function wrapEditorClose(hot, container) {
-        const editor = typeof hot.getActiveEditor === 'function' ? hot.getActiveEditor() : null;
-        if (!editor || typeof editor.close !== 'function' || editor._syncWrapped) return;
-        const origClose = editor.close.bind(editor);
-        editor.close = function closeEditorWrapped() {
-            const result = origClose.apply(this, arguments);
-            markEditing(container, false);
-            setTimeout(() => {
-                if (!anyEditorOpen()) resumeSync();
-            }, 0);
-            return result;
-        };
-        editor._syncWrapped = true;
-    }
-
-    function openCellEditor(hot, coords, event) {
-        if (!hot || hot.isDestroyed || !coords) return;
-        if (event && event.button !== 0) return;
-        if (coords.row < 0 || coords.col < 0) return;
-        const sel = hot.getSelectedLast && hot.getSelectedLast();
-        if (!sel || sel[0] !== sel[2] || sel[1] !== sel[3]) return;
-        const editor = typeof hot.getActiveEditor === 'function' ? hot.getActiveEditor() : null;
-        if (!editor || typeof editor.beginEditing !== 'function') return;
-        if (editor.isOpened && editor.isOpened()) return;
-        pauseSync();
-        editor.beginEditing();
-    }
-
-    function cellViewHooks(container) {
+    function tableFocusHooks() {
         return {
-            afterOnCellMouseDown(event, coords) {
-                setActiveHot(this);
-                const target = event && event.target;
-                const onHandle = !!(target && target.classList && (target.classList.contains('corner') || target.classList.contains('wtBorder')));
-                this._viewCellKey = (!onHandle && coords && coords.row >= 0 && coords.col >= 0 && (!event || event.button === 0))
-                    ? `${coords.row}:${coords.col}`
-                    : '';
-            },
-            afterOnCellMouseUp(event, coords) {
-                const key = coords ? `${coords.row}:${coords.col}` : '';
-                const shouldOpen = this._viewCellKey && this._viewCellKey === key;
-                this._viewCellKey = '';
-                if (!shouldOpen) return;
-                const hot = this;
-                setTimeout(() => openCellEditor(hot, coords, event), 0);
+            afterOnCellMouseDown() {
+                lastActiveHot = this;
             },
             afterBeginEditing() {
                 pauseSync();
-                markEditing(container, true);
-                wrapEditorClose(this, container);
+            },
+            afterFinishEditing() {
+                resumeSync();
             },
             afterSelection() {
                 if (suppressHotSelect || !hotHasSelection(this)) return;
-                lastActiveHot = this;
-                try { this.listen(); } catch (e) { /* ignore */ }
+                setActiveHot(this);
             },
         };
     }
@@ -918,29 +886,31 @@
             rowHeaders: true,
             colHeaders: ['标题', '内容'],
             columns: [
-                { width: 120, copyable: true, renderer: cellTitleRenderer },
-                { width: 180, copyable: true, renderer: cellTitleRenderer },
+                titleColumn(),
+                contentColumn(),
             ],
-            minSpareRows: 2,
+            minSpareRows: EMPTY_LEFT_ROWS,
             minRows: EMPTY_LEFT_ROWS,
             ...sharedHotSettings(),
+            stretchH: 'all',
             contextMenu: buildContextMenu(() => leftHot),
             afterGetColHeader(col, TH) {
                 TH.classList.add('ht-sc-header');
             },
             afterChange(changes, source) {
                 if (!changes || source === 'loadData') return;
+                persistDraft();
                 scheduleRefresh();
             },
-            afterCreateRow(index, amount, source) {
-                if (source === 'auto') return;
+            afterCreateRow() {
+                persistDraft();
                 scheduleRefresh();
             },
-            afterRemoveRow(index, amount, source) {
-                if (source === 'auto') return;
+            afterRemoveRow() {
+                persistDraft();
                 scheduleRefresh();
             },
-            ...cellViewHooks(container),
+            ...tableFocusHooks(),
         });
     }
 
@@ -953,15 +923,16 @@
             colHeaders: rightHeaders(sets),
             columns: rightColumns(sets),
             minSpareRows: 0,
-            minRows: 0,
+            minRows: 1,
             ...sharedHotSettings(),
+            width: rightTableWidth(sets),
+            height: 'auto',
             stretchH: 'none',
-            width: '100%',
             contextMenu: buildContextMenu(() => rightHot),
             afterGetColHeader(col, TH) {
                 TH.classList.add('ht-sc-header');
             },
-            ...cellViewHooks(container),
+            ...tableFocusHooks(),
         });
     }
 
@@ -1173,17 +1144,6 @@
         document.addEventListener('keydown', (ev) => {
             if (ev.key === 'Escape' && !el.historyDrawer.hidden) closeHistory();
         });
-        document.addEventListener('focusin', (ev) => {
-            if (isNativeTextField(ev.target)) releaseHot();
-        }, true);
-        document.addEventListener('mousedown', (ev) => {
-            if (isNativeTextField(ev.target)) {
-                releaseHot();
-                return;
-            }
-            const hot = hotFromEventTarget(ev.target);
-            if (hot) setActiveHot(hot);
-        }, true);
     }
 
     bindClipboardEvents();
@@ -1192,6 +1152,4 @@
     bindUi();
     restoreDraft();
     requestAnimationFrame(refreshTablesSize);
-    window.__leftHot = leftHot;
-    window.__rightHot = rightHot;
 })();
