@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
+    <title>分割Canva文案</title>
+    <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+    <div class="app" id="app">
+        <section class="panel panel-project">
+            <header class="panel-head">
+                <h1>项目名称</h1>
+                <button type="button" class="btn btn-ghost" id="btnHistory" title="查看已使用的流水号">流水记录</button>
+            </header>
+            <div class="project-body">
+                <label class="field field-name">
+                    <span class="field-label">名称</span>
+                    <div class="name-row">
+                        <input id="projectName" type="text" maxlength="80" placeholder="XXX" autocomplete="off" />
+                        <button type="button" class="btn btn-primary btn-increment" id="btnIncrement" title="把当前流水号写入记录并加一">递增流水号</button>
+                    </div>
+                </label>
+                <div class="field field-filename">
+                    <span class="field-label">导出文件名</span>
+                    <input id="filenameBox" class="filename-box" type="text" spellcheck="false" autocomplete="off" title="可编辑；流水号按当天记录的最大值计算" />
+                    <button type="button" class="btn btn-mini" id="btnCopyFilename" title="复制文件名">复制</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel panel-alloc">
+            <header class="panel-head">
+                <h1>文案分配</h1>
+                <div class="panel-head-actions">
+                    <div class="clear-group" id="clearGroup">
+                        <button type="button" class="btn btn-ghost" id="btnClear">清空内容</button>
+                        <button type="button" class="btn btn-danger" id="btnClearYes" hidden>确认清空</button>
+                        <button type="button" class="btn btn-ghost" id="btnClearNo" hidden>取消</button>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btnExport">导出 CSV</button>
+                </div>
+            </header>
+
+            <div class="alloc-body">
+                <div class="alloc-toolbar">
+                    <label class="field field-param field-param-inline">
+                        <span class="field-label">目标几个</span>
+                        <input id="targetCount" type="number" min="1" max="999" step="1" value="24" />
+                    </label>
+                    <label class="field field-param field-param-inline">
+                        <span class="field-label">模板几套</span>
+                        <input id="templateSets" type="number" min="1" max="20" step="1" value="5" />
+                    </label>
+                </div>
+                <div class="alloc-tables">
+                    <aside class="alloc-left">
+                        <div class="subhead">
+                            <span>原始文案</span>
+                            <span class="subhead-meta" id="leftCount">0 条</span>
+                        </div>
+                        <div id="leftHot" class="hot-box"></div>
+                    </aside>
+                    <main class="alloc-right">
+                        <div class="subhead">
+                            <span>分配结果</span>
+                            <span class="subhead-meta" id="rightMeta">0 行 · 0 列对</span>
+                        </div>
+                        <div id="rightHot" class="hot-box"></div>
+                    </main>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="drawer-mask" id="historyMask" hidden></div>
+    <aside class="drawer" id="historyDrawer" hidden aria-label="流水记录">
+        <header class="drawer-head">
+            <h2>流水记录</h2>
+            <button type="button" class="btn btn-ghost" id="btnCloseHistory">关闭</button>
+        </header>
+        <div class="drawer-tip">规则：A1 / B2 / C3 / D4 … 新流水号按当天记录里最大的号加一；删除记录后会重新计算。</div>
+        <div class="drawer-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>流水号</th>
+                        <th>日期</th>
+                        <th>文件名</th>
+                        <th class="col-action">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+            <div class="history-empty" id="historyEmpty">还没有流水记录</div>
+        </div>
+        <footer class="drawer-foot">
+            <button type="button" class="btn btn-ghost" id="btnResetSerial">重置流水号</button>
+        </footer>
+    </aside>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="./vendor/handsontable.full.min.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>
