@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
-    <title>分割Canva文案 · v1.2.0</title>
+    <title>分割Canva文案 · v1.3.0</title>
     <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260826j" />
+    <link rel="stylesheet" href="./styles.css?v=20260826n" />
 </head>
 <body>
-    <div class="app no-sign" id="app">
+    <div class="app" id="app">
         <section class="panel panel-project">
             <header class="panel-head">
                 <h1>项目名称</h1>
@@ -56,10 +56,10 @@
                         <input id="templateSets" type="number" min="1" max="20" step="1" value="1" />
                     </label>
                     <label class="field field-param field-param-inline">
-                        <span class="field-label">加署名</span>
-                        <select id="signToggle" aria-label="是否加署名">
-                            <option value="0" selected>NO</option>
-                            <option value="1">YES</option>
+                        <span class="field-label">加署名列</span>
+                        <select id="signToggle" aria-label="是否加署名列">
+                            <option value="0">NO</option>
+                            <option value="1" selected>YES</option>
                         </select>
                     </label>
                     <div class="alloc-hint" id="allocHint" aria-live="polite"></div>
@@ -117,6 +117,6 @@
     <div class="toast" id="toast"></div>
 
     <script src="./vendor/handsontable.full.min.js"></script>
-    <script src="./app.js?v=20260826g"></script>
+    <script src="./app.js?v=20260826n"></script>
 </body>
 </html>

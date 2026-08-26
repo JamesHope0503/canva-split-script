@@ -61,7 +61,7 @@
                 originalRows: [],
                 filename: '',
                 filenameTouched: false,
-                useSignature: false,
+                useSignature: true,
             },
         };
     }
@@ -233,7 +233,7 @@
     }
 
     function useSign() {
-        return store.draft.useSignature === true;
+        return store.draft.useSignature !== false;
     }
 
     function inspectLeftRows() {
@@ -329,15 +329,15 @@
     }
 
     function signColumn() {
-        return { type: 'text', width: COL_SIGN_W };
+        return { type: 'text', width: COL_SIGN_W, wordWrap: false };
     }
 
     function titleColumn() {
-        return { type: 'text', width: COL_TITLE_W };
+        return { type: 'text', width: COL_TITLE_W, wordWrap: false };
     }
 
     function contentColumn() {
-        return { type: 'text', width: COL_CONTENT_W };
+        return { type: 'text', width: COL_CONTENT_W, wordWrap: false };
     }
 
     function rightColumns(sets) {
@@ -552,8 +552,10 @@
                         if (!hot) return;
                         setActiveHot(hot);
                         const applyText = (text, html) => {
+                            const sel = hot.getSelectedLast && hot.getSelectedLast();
+                            const multi = !!(sel && (sel[0] !== sel[2] || sel[1] !== sel[3]));
                             const grid = resolvePasteGrid(text, html);
-                            if (isMultiCellGrid(grid)) pasteGridAtAnchor(hot, grid);
+                            if (isMultiCellGrid(grid) || multi) pasteIntoSelectionLikeExcel(hot, text, html);
                             else pastePlainIntoSelectedCell(hot, grid[0] && grid[0][0] != null ? grid[0][0] : text);
                         };
                         if (navigator.clipboard && navigator.clipboard.read) {
@@ -718,6 +720,13 @@
         return null;
     }
 
+    function cellClipboardText(node) {
+        return String(node && node.textContent != null ? node.textContent : '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n');
+    }
+
     function parseHtmlTable(html) {
         const src = String(html == null ? '' : html);
         if (!src || !/<(table|tr|td|th)\b/i.test(src)) return null;
@@ -725,17 +734,42 @@
             const doc = new DOMParser().parseFromString(src, 'text/html');
             const table = doc.querySelector('table');
             if (!table) return null;
+            if (table.getAttribute('data-ht-copy') === 'cell') {
+                const td = table.querySelector('th,td');
+                return [[cellClipboardText(td)]];
+            }
             const rows = [];
             table.querySelectorAll('tr').forEach((tr) => {
-                const cells = Array.from(tr.querySelectorAll('th,td')).map((td) =>
-                    String(td.innerText || '').replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-                );
+                const cells = Array.from(tr.querySelectorAll('th,td')).map((td) => cellClipboardText(td));
                 if (cells.length) rows.push(cells);
             });
             return rows.length ? rows : null;
         } catch (e) {
             return null;
         }
+    }
+
+    function unwrapQuotedClipboard(plain) {
+        let s = String(plain == null ? '' : plain).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if (s.endsWith('\n') && s.indexOf('\n') !== s.length - 1) s = s.slice(0, -1);
+        if (s.length >= 2 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+            return s.slice(1, -1).replace(/""/g, '"');
+        }
+        return null;
+    }
+
+    function extractCopiedCellValue(plain, html) {
+        if (html && /data-ht-copy\s*=\s*["']cell["']/.test(html)) {
+            const fromHtml = parseHtmlTable(html);
+            if (fromHtml && fromHtml[0]) return fromHtml[0][0] == null ? '' : String(fromHtml[0][0]);
+        }
+        const htmlGrid = parseHtmlTable(html);
+        if (isSingleCellGrid(htmlGrid)) return htmlGrid[0][0] == null ? '' : String(htmlGrid[0][0]);
+        const quoted = unwrapQuotedClipboard(plain);
+        if (quoted !== null) return quoted;
+        const plainGrid = parseSheetClip(plain);
+        if (isSingleCellGrid(plainGrid)) return plainGrid[0][0] == null ? '' : String(plainGrid[0][0]);
+        return null;
     }
 
     function parseSheetClip(text) {
@@ -786,10 +820,17 @@
         return rows.length ? rows : [['']];
     }
 
+    function isSingleCellGrid(grid) {
+        return !!(grid && grid.length === 1 && grid[0] && grid[0].length === 1);
+    }
+
     function resolvePasteGrid(plain, html) {
-        const fromPlain = parseSheetClip(plain);
-        if (isMultiCellGrid(fromPlain)) return fromPlain;
         const fromHtml = parseHtmlTable(html);
+        // 单格 HTML 优先：单元格内换行不能被 text/plain 拆成多行
+        if (isSingleCellGrid(fromHtml)) return fromHtml;
+        const fromPlain = parseSheetClip(plain);
+        if (isSingleCellGrid(fromPlain)) return fromPlain;
+        if (isMultiCellGrid(fromPlain)) return fromPlain;
         if (fromHtml && isMultiCellGrid(fromHtml)) return fromHtml;
         if (fromHtml && fromHtml.length && fromHtml[0] && fromHtml[0][0] && !String(plain || '').trim()) {
             return fromHtml;
@@ -855,6 +896,57 @@
         return true;
     }
 
+    function isColHidden(hot, col) {
+        const plugin = hot.getPlugin && hot.getPlugin('hiddenColumns');
+        if (plugin && typeof plugin.isHidden === 'function') return !!plugin.isHidden(col);
+        if (plugin && typeof plugin.getHiddenColumns === 'function') {
+            const hidden = plugin.getHiddenColumns() || [];
+            return hidden.indexOf(col) !== -1;
+        }
+        return false;
+    }
+
+    function pasteValueIntoSelection(hot, text) {
+        if (!hot || hot.isDestroyed) return false;
+        const ranges = hot.getSelected && hot.getSelected();
+        if (!ranges || !ranges.length) return false;
+        const value = String(text == null ? '' : text);
+        const maxCols = hot.countCols ? hot.countCols() : Infinity;
+        let lastRow = 0;
+        ranges.forEach((range) => {
+            lastRow = Math.max(lastRow, Math.max(range[0], range[2]));
+        });
+        ensureRowsForPaste(hot, lastRow);
+        const changes = [];
+        ranges.forEach((range) => {
+            const r1 = Math.min(range[0], range[2]);
+            const r2 = Math.max(range[0], range[2]);
+            const c1 = Math.min(range[1], range[3]);
+            const c2 = Math.max(range[1], range[3]);
+            for (let r = r1; r <= r2; r += 1) {
+                for (let c = c1; c <= c2; c += 1) {
+                    if (r < 0 || c < 0 || c >= maxCols || isColHidden(hot, c)) continue;
+                    const meta = hot.getCellMeta(r, c) || {};
+                    if (meta.readOnly || meta.editor === false) continue;
+                    changes.push([r, c, value]);
+                }
+            }
+        });
+        if (!changes.length) return false;
+        hot.setDataAtCell(changes, 'CopyPaste.paste');
+        return true;
+    }
+
+    function pasteIntoSelectionLikeExcel(hot, plain, html) {
+        if (!hot || hot.isDestroyed) return false;
+        const cellValue = extractCopiedCellValue(plain, html);
+        if (cellValue !== null) return pasteValueIntoSelection(hot, cellValue);
+        const grid = resolvePasteGrid(plain, html);
+        if (isMultiCellGrid(grid)) return pasteGridAtAnchor(hot, grid);
+        const one = grid[0] && grid[0][0] != null ? grid[0][0] : plain;
+        return pasteValueIntoSelection(hot, one);
+    }
+
     function getSelectionGridData(hot) {
         if (!hot || hot.isDestroyed) return null;
         const sel = hot.getSelectedLast && hot.getSelectedLast();
@@ -892,11 +984,12 @@
     }
 
     function gridToHtmlTable(data) {
+        const single = !!(data && data.length === 1 && data[0] && data[0].length === 1);
         const rows = (data || []).map((row) => {
             const tds = (row || []).map((c) => `<td>${escapeHtml(c)}</td>`).join('');
             return `<tr>${tds}</tr>`;
         }).join('');
-        return `<table>${rows}</table>`;
+        return `<table data-ht-copy="${single ? 'cell' : 'grid'}">${rows}</table>`;
     }
 
     function writeSelectionToClipboard(event, hot) {
@@ -944,7 +1037,7 @@
             event.stopImmediatePropagation();
             const multi = sel[0] !== sel[2] || sel[1] !== sel[3];
             const grid = resolvePasteGrid(plain, html);
-            if (isMultiCellGrid(grid) || multi) pasteGridAtAnchor(hot, grid);
+            if (isMultiCellGrid(grid) || multi) pasteIntoSelectionLikeExcel(hot, plain, html);
             else pastePlainIntoSelectedCell(hot, grid[0] && grid[0][0] != null ? grid[0][0] : plain);
         }, true);
 
@@ -1257,7 +1350,7 @@
         el.targetCount.value = String(clampInt(draft.targetCount, 1, MAX_TARGET, DEFAULT_TARGET));
         el.templateSets.value = String(clampInt(draft.templateSets, 1, MAX_SETS, DEFAULT_SETS));
         filenameTouched = !!draft.filenameTouched;
-        if (typeof draft.useSignature !== 'boolean') draft.useSignature = false;
+        if (typeof draft.useSignature !== 'boolean') draft.useSignature = true;
         store.draft.useSignature = draft.useSignature;
         if (leftHot) leftHot.loadData(ensureLeftSpare(draft.originalRows));
         if (filenameTouched && draft.filename) el.filenameBox.value = draft.filename;
