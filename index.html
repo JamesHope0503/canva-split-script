@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
-    <title>分割Canva文案 · 核对v37</title>
+    <title>分割Canva文案 · v1.2.0</title>
     <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260824w" />
+    <link rel="stylesheet" href="./styles.css?v=20260826f" />
 </head>
 <body>
-    <div class="app" id="app">
+    <div class="app no-sign" id="app">
         <section class="panel panel-project">
             <header class="panel-head">
-                <h1>项目名称 <span style="margin-left:10px;padding:2px 8px;border-radius:4px;background:#fff3cd;color:#7a5b00;font-size:12px;">核对v37</span></h1>
+                <h1>项目名称</h1>
                 <button type="button" class="btn btn-ghost" id="btnHistory" title="查看已使用的流水号">流水记录</button>
             </header>
             <div class="project-body">
@@ -24,8 +24,10 @@
                 </label>
                 <div class="field field-filename">
                     <span class="field-label">导出文件名</span>
-                    <input id="filenameBox" class="filename-box" type="text" spellcheck="false" autocomplete="off" title="可编辑；流水号按当天记录的最大值计算" />
-                    <button type="button" class="btn btn-mini" id="btnCopyFilename" title="复制文件名">复制</button>
+                    <div class="filename-row">
+                        <input id="filenameBox" class="filename-box" type="text" spellcheck="false" autocomplete="off" title="可编辑；流水号按当天记录的最大值计算" />
+                        <button type="button" class="btn btn-copy-filename" id="btnCopyFilename" title="复制文件名">复制</button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -35,7 +37,7 @@
                 <h1>文案分配</h1>
                 <div class="panel-head-actions">
                     <div class="clear-group" id="clearGroup">
-                        <button type="button" class="btn btn-ghost" id="btnClear">清空内容</button>
+                        <button type="button" class="btn btn-ghost" id="btnClear">清空文案内容</button>
                         <button type="button" class="btn btn-danger" id="btnClearYes" hidden>确认清空</button>
                         <button type="button" class="btn btn-ghost" id="btnClearNo" hidden>取消</button>
                     </div>
@@ -47,12 +49,20 @@
                 <div class="alloc-toolbar">
                     <label class="field field-param field-param-inline">
                         <span class="field-label">目标几个</span>
-                        <input id="targetCount" type="number" min="1" max="999" step="1" value="24" />
+                        <input id="targetCount" type="number" min="1" max="999" step="1" value="1" />
                     </label>
                     <label class="field field-param field-param-inline">
                         <span class="field-label">模板几套</span>
-                        <input id="templateSets" type="number" min="1" max="20" step="1" value="5" />
+                        <input id="templateSets" type="number" min="1" max="20" step="1" value="1" />
                     </label>
+                    <label class="field field-param field-param-inline">
+                        <span class="field-label">加署名</span>
+                        <select id="signToggle" aria-label="是否加署名">
+                            <option value="0" selected>NO</option>
+                            <option value="1">YES</option>
+                        </select>
+                    </label>
+                    <div class="alloc-hint" id="allocHint" aria-live="polite"></div>
                 </div>
                 <div class="alloc-tables">
                     <aside class="alloc-left">
@@ -105,6 +115,6 @@
     <div class="toast" id="toast"></div>
 
     <script src="./vendor/handsontable.full.min.js"></script>
-    <script src="./app.js?v=20260824x"></script>
+    <script src="./app.js?v=20260826f"></script>
 </body>
 </html>

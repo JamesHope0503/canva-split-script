@@ -133,7 +133,7 @@ body {
 }
 
 .field-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--muted);
 }
@@ -158,29 +158,44 @@ body {
 
 .field-name input:focus,
 .field-param input:focus,
+.field-param-inline select:focus,
 .filename-box:focus {
     border-color: var(--cyan-deep);
     box-shadow: 0 0 0 3px rgba(45, 183, 196, 0.18);
     outline: none;
 }
 
-.field-filename {
-    position: relative;
+.filename-row {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
 }
 
 .field-filename .filename-box {
-    width: 100%;
-    padding: 0 76px 0 14px;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    padding: 0 14px;
     background: var(--cyan-cell);
     border-color: #b7dfe4;
     font-weight: 700;
     letter-spacing: 0.02em;
 }
 
-.field-filename .btn-mini {
-    position: absolute;
-    right: 8px;
-    bottom: 6px;
+.btn.btn-copy-filename {
+    flex: 0 0 80px;
+    width: 80px;
+    height: 40px;
+    line-height: 38px;
+    padding: 0;
+    background: #c8eef2;
+    border: 1px solid #7ecad3;
+    color: #0f6b73;
+}
+
+.btn.btn-copy-filename:hover {
+    background: #a9e4ea;
 }
 
 .field-param input {
@@ -190,6 +205,7 @@ body {
 
 .alloc-body {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -200,8 +216,31 @@ body {
 .alloc-toolbar {
     flex: 0 0 auto;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 16px;
+}
+
+.field-param-inline select {
+    width: 70px;
+    height: 36px;
+    border: 1px solid #c5d5d9;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 14px;
+    padding: 0 8px;
+}
+
+.alloc-hint {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 36px;
+    padding-right: 2px;
+    white-space: nowrap;
 }
 
 .field-param-inline {
@@ -220,11 +259,17 @@ body {
 
 .alloc-tables {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 460px 1fr;
     gap: 12px;
     align-items: stretch;
+    overflow: hidden;
+}
+
+.app.no-sign .alloc-tables {
+    grid-template-columns: 360px 1fr;
 }
 
 .alloc-left,
@@ -244,10 +289,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex: 0 0 22px;
-    height: 22px;
+    flex: 0 0 24px;
+    height: 24px;
     margin: 0 2px 6px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #255860;
 }
@@ -270,11 +315,15 @@ body {
 
 .hot-box-right {
     flex: 0 0 auto;
-    width: 776px;
+    width: 676px;
     height: 620px;
     overflow: scroll;
     scrollbar-width: auto;
     scrollbar-color: #6b8f96 #e8f0f2;
+}
+
+.app.no-sign .hot-box-right {
+    width: 776px;
 }
 
 .hot-box-right::-webkit-scrollbar {
@@ -294,6 +343,10 @@ body {
     background: #e8f0f2;
 }
 
+.hot-box-right::-webkit-scrollbar-corner {
+    background: #e8f0f2;
+}
+
 #rightHot {
     width: max-content;
     height: auto;
@@ -304,7 +357,7 @@ body {
     padding: 0 12px;
     border: 1px solid transparent;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     line-height: 26px;
@@ -395,7 +448,7 @@ body.modal-open .handsontable .ht_clone_top_left_corner {
     flex: 0 0 auto;
     padding: 12px 14px 8px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.55;
     background: #fff;
 }
@@ -419,7 +472,7 @@ body.modal-open .handsontable .ht_clone_top_left_corner {
     border-bottom: 1px solid var(--line);
     padding: 8px 6px;
     text-align: left;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .history-table th {
@@ -469,7 +522,7 @@ body.modal-open .handsontable .ht_clone_top_left_corner {
     border-radius: 6px;
     background: #374151;
     color: #fff;
-    font-size: 12px;
+    font-size: 14px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
@@ -484,11 +537,20 @@ body.modal-open .handsontable .ht_clone_top_left_corner {
     background: var(--warm-head) !important;
 }
 
+.handsontable,
+.handsontable td,
+.handsontable th,
+.handsontableInput,
+.htContextMenu {
+    font-size: 14px;
+}
+
 table.app-handsontable thead th {
     height: 28px !important;
     max-height: 28px !important;
     line-height: 26px !important;
     box-sizing: border-box !important;
+    font-size: 14px;
 }
 
 table.app-handsontable tbody th,
@@ -498,6 +560,7 @@ table.app-handsontable tbody td {
     line-height: 33px !important;
     padding: 0 8px !important;
     box-sizing: border-box !important;
+    font-size: 14px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;

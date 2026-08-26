@@ -1,12 +1,16 @@
 (function () {
-    const STORAGE_KEY = 'canva-script.split-script.v1';
-    const LEGACY_STORAGE_KEY = 'canva-script.split-copy.v1';
-    const DEFAULT_TARGET = 24;
-    const DEFAULT_SETS = 5;
+    const STORAGE_KEY = 'canva-script.split-script.v2';
+    const LEGACY_STORAGE_KEYS = [
+        'canva-script.split-script.v1',
+        'canva-script.split-copy.v1',
+    ];
+    const DEFAULT_TARGET = 1;
+    const DEFAULT_SETS = 1;
     const EMPTY_LEFT_ROWS = 10;
     const MAX_SETS = 20;
     const MAX_TARGET = 999;
     const ROW_H = 35;
+    const COL_SIGN_W = 100;
     const COL_TITLE_W = 120;
     const COL_CONTENT_W = 150;
 
@@ -31,6 +35,9 @@
         historyBody: document.getElementById('historyBody'),
         historyEmpty: document.getElementById('historyEmpty'),
         toast: document.getElementById('toast'),
+        allocHint: document.getElementById('allocHint'),
+        signToggle: document.getElementById('signToggle'),
+        app: document.getElementById('app'),
     };
 
     let leftHot = null;
@@ -41,7 +48,6 @@
     let refreshTimer = 0;
     let store = loadStore();
     let filenameTouched = false;
-    let refreshPaused = false;
     let pendingRefresh = false;
 
     function defaultStore() {
@@ -55,22 +61,35 @@
                 originalRows: [],
                 filename: '',
                 filenameTouched: false,
+                useSignature: false,
             },
+        };
+    }
+
+    function parseStore(raw, resetParams) {
+        const parsed = JSON.parse(raw);
+        const base = defaultStore();
+        const draft = Object.assign({}, base.draft, parsed.draft || {});
+        if (resetParams) {
+            draft.targetCount = DEFAULT_TARGET;
+            draft.templateSets = DEFAULT_SETS;
+        }
+        return {
+            nextIndex: Math.max(1, Number(parsed.nextIndex) || 1),
+            history: Array.isArray(parsed.history) ? parsed.history : [],
+            draft,
         };
     }
 
     function loadStore() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY)
-                || localStorage.getItem(LEGACY_STORAGE_KEY);
-            if (!raw) return defaultStore();
-            const parsed = JSON.parse(raw);
-            const base = defaultStore();
-            return {
-                nextIndex: Math.max(1, Number(parsed.nextIndex) || 1),
-                history: Array.isArray(parsed.history) ? parsed.history : [],
-                draft: Object.assign(base.draft, parsed.draft || {}),
-            };
+            const current = localStorage.getItem(STORAGE_KEY);
+            if (current) return parseStore(current, false);
+            for (let i = 0; i < LEGACY_STORAGE_KEYS.length; i += 1) {
+                const raw = localStorage.getItem(LEGACY_STORAGE_KEYS[i]);
+                if (raw) return parseStore(raw, true);
+            }
+            return defaultStore();
         } catch (e) {
             return defaultStore();
         }
@@ -194,28 +213,89 @@
     }
 
     function emptyLeftGrid() {
-        return Array.from({ length: EMPTY_LEFT_ROWS }, () => ['', '']);
+        return Array.from({ length: EMPTY_LEFT_ROWS }, () => ['', '', '']);
+    }
+
+    function normalizeLeftRow(row) {
+        const cells = Array.isArray(row) ? row : [];
+        if (cells.length >= 3) {
+            return [cellText(cells[0]), cellText(cells[1]), cellText(cells[2])];
+        }
+        return ['', cellText(cells[0]), cellText(cells[1])];
+    }
+
+    function cellText(value) {
+        return value == null ? '' : String(value).trim();
     }
 
     function isFilledRow(row) {
-        return Array.isArray(row) && row.some((c) => String(c || '').trim());
+        return Array.isArray(row) && row.some((c) => cellText(c));
+    }
+
+    function useSign() {
+        return store.draft.useSignature === true;
+    }
+
+    function inspectLeftRows() {
+        const data = leftHot ? leftHot.getSourceData() : [];
+        const signed = useSign();
+        const filled = [];
+        let missingTitle = false;
+        let missingContent = false;
+        let missingSign = false;
+        (data || []).forEach((row) => {
+            const [sign, title, content] = normalizeLeftRow(row);
+            if (signed) {
+                if (!sign && !title && !content) return;
+            } else if (!title && !content) {
+                return;
+            }
+            filled.push([sign, title, content]);
+            if (!title) missingTitle = true;
+            if (!content) missingContent = true;
+            if (signed && title && content && !sign) missingSign = true;
+        });
+        return {
+            filled,
+            complete: filled.filter((item) => item[1] && item[2]),
+            missingTitle,
+            missingContent,
+            missingSign,
+        };
     }
 
     function readOriginalPairs() {
-        const data = leftHot ? leftHot.getSourceData() : [];
-        return (data || [])
-            .filter(isFilledRow)
-            .map((r) => [r[0] != null ? String(r[0]) : '', r[1] != null ? String(r[1]) : '']);
+        return inspectLeftRows().filled.map((row) => [row[0], row[1], row[2]]);
+    }
+
+    function hasAllocErrors(info, target) {
+        const rows = info || inspectLeftRows();
+        const n = Number.isFinite(target) ? target : getTargetCount();
+        return !!(
+            rows.missingTitle
+            || rows.missingContent
+            || rows.missingSign
+            || (rows.filled.length && rows.complete.length < n)
+        );
     }
 
     function takeTargetPairs(pairs, target) {
         const list = Array.isArray(pairs) ? pairs : [];
         const n = Math.max(0, Number(target) || 0);
         if (!list.length || n <= 0) return [];
-        if (list.length >= n) return list.slice(0, n);
-        const out = [];
-        for (let i = 0; i < n; i += 1) out.push(list[i % list.length]);
-        return out;
+        return list.slice(0, n);
+    }
+
+    function updateAllocHint(info, target) {
+        if (!el.allocHint) return;
+        const rows = info || inspectLeftRows();
+        const n = Number.isFinite(target) ? target : getTargetCount();
+        const msgs = [];
+        if (rows.missingTitle) msgs.push('缺标题');
+        if (rows.missingContent) msgs.push('缺内容');
+        if (rows.missingSign) msgs.push('没有署名');
+        if (rows.filled.length && rows.complete.length < n) msgs.push('文案不够');
+        el.allocHint.textContent = msgs.join(' / ');
     }
 
     function pairsToGrid(pairs, sets) {
@@ -228,7 +308,11 @@
             const row = [];
             for (let c = 0; c < cols; c += 1) {
                 const item = items[r * cols + c];
-                row.push(item ? item[0] : '', item ? item[1] : '');
+                if (useSign()) {
+                    row.push(item ? item[0] : '', item ? item[1] : '', item ? item[2] : '');
+                } else {
+                    row.push(item ? item[1] : '', item ? item[2] : '');
+                }
             }
             grid.push(row);
         }
@@ -238,9 +322,14 @@
     function rightHeaders(sets) {
         const headers = [];
         for (let i = 1; i <= sets; i += 1) {
+            if (useSign()) headers.push(`署名${i}`);
             headers.push(`标题${i}`, `内容${i}`);
         }
         return headers;
+    }
+
+    function signColumn() {
+        return { type: 'text', width: COL_SIGN_W };
     }
 
     function titleColumn() {
@@ -254,13 +343,23 @@
     function rightColumns(sets) {
         const columns = [];
         for (let i = 0; i < sets; i += 1) {
+            if (useSign()) columns.push(signColumn());
             columns.push(titleColumn(), contentColumn());
         }
         return columns;
     }
 
+    function colsPerSet() {
+        return useSign() ? 3 : 2;
+    }
+
+    function emptyRightRow() {
+        return useSign() ? ['', '', ''] : ['', ''];
+    }
+
     function rightTableWidth(sets) {
-        return 36 + Math.max(1, Number(sets) || 1) * (COL_TITLE_W + COL_CONTENT_W);
+        const pairW = (useSign() ? COL_SIGN_W : 0) + COL_TITLE_W + COL_CONTENT_W;
+        return 36 + Math.max(1, Number(sets) || 1) * pairW;
     }
 
     function csvEscape(value) {
@@ -337,6 +436,7 @@
             originalRows: readOriginalPairs(),
             filename: filenameInputValue(),
             filenameTouched,
+            useSignature: useSign(),
         };
         store.nextIndex = nextSerialIndex();
         saveStore();
@@ -351,64 +451,71 @@
         return isHotEditorOpen(leftHot) || isHotEditorOpen(rightHot);
     }
 
-    function refreshRight() {
+    function applyRightTable() {
         if (!rightHot || rightHot.isDestroyed) return;
-        if (refreshPaused || anyEditorOpen()) {
-            pendingRefresh = true;
-            return;
-        }
         const sets = getTemplateSets();
-        const pairs = takeTargetPairs(readOriginalPairs(), getTargetCount());
+        const target = getTargetCount();
+        const info = inspectLeftRows();
+        const pairs = takeTargetPairs(info.complete, target);
         const grid = pairsToGrid(pairs, sets);
-        const needRebuild = rightHot.countCols() !== sets * 2;
         suppressHotSelect = true;
         try {
-            if (needRebuild) {
-                rightHot.updateSettings({
-                    colHeaders: rightHeaders(sets),
-                    columns: rightColumns(sets),
-                    stretchH: 'none',
-                    width: rightTableWidth(sets),
-                    height: 'auto',
-                });
-            }
-            rightHot.loadData(grid);
+            rightHot.updateSettings({
+                colHeaders: rightHeaders(sets),
+                columns: rightColumns(sets),
+                stretchH: 'none',
+                width: rightTableWidth(sets),
+                height: 'auto',
+            });
+            rightHot.loadData(grid.length ? grid : [emptyRightRow()]);
         } finally {
             suppressHotSelect = false;
         }
-        updateCounts(readOriginalPairs(), grid, sets);
+        updateCounts(info.filled, grid, sets);
+        updateAllocHint(info, target);
         persistDraft();
     }
 
-    function scheduleRefresh() {
-        if (refreshPaused || anyEditorOpen()) {
+    function refreshRight(force) {
+        if (!rightHot || rightHot.isDestroyed) return;
+        if (!force && anyEditorOpen()) {
             pendingRefresh = true;
+            clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => refreshRight(false), 80);
             return;
         }
-        clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(refreshRight, 160);
-    }
-
-    function pauseSync() {
-        refreshPaused = true;
-    }
-
-    function resumeSync() {
-        refreshPaused = false;
-        if (!pendingRefresh) return;
         pendingRefresh = false;
-        scheduleRefresh();
+        applyRightTable();
+    }
+
+    function scheduleRefresh() {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => refreshRight(false), 80);
     }
 
     function ensureLeftSpare(rows) {
         const list = Array.isArray(rows)
-            ? rows.map((r) => [r[0] != null ? String(r[0]) : '', r[1] != null ? String(r[1]) : ''])
+            ? rows.map((r) => {
+                const cells = Array.isArray(r) ? r : [];
+                if (cells.length >= 3) {
+                    return [
+                        cells[0] != null ? String(cells[0]) : '',
+                        cells[1] != null ? String(cells[1]) : '',
+                        cells[2] != null ? String(cells[2]) : '',
+                    ];
+                }
+                return [
+                    '',
+                    cells[0] != null ? String(cells[0]) : '',
+                    cells[1] != null ? String(cells[1]) : '',
+                ];
+            })
             : [];
         const filled = list.filter(isFilledRow);
         const out = filled.length ? filled.slice() : [];
-        while (out.length < filled.length + EMPTY_LEFT_ROWS) out.push(['', '']);
+        while (out.length < filled.length + EMPTY_LEFT_ROWS) out.push(['', '', '']);
         if (!out.length) {
-            while (out.length < EMPTY_LEFT_ROWS) out.push(['', '']);
+            while (out.length < EMPTY_LEFT_ROWS) out.push(['', '', '']);
         }
         return out;
     }
@@ -866,11 +973,8 @@
             afterOnCellMouseDown() {
                 lastActiveHot = this;
             },
-            afterBeginEditing() {
-                pauseSync();
-            },
             afterFinishEditing() {
-                resumeSync();
+                if (this === leftHot) scheduleRefresh();
             },
             afterSelection() {
                 if (suppressHotSelect || !hotHasSelection(this)) return;
@@ -884,15 +988,21 @@
         leftHot = new Handsontable(container, {
             data: emptyLeftGrid(),
             rowHeaders: true,
-            colHeaders: ['标题', '内容'],
+            colHeaders: ['署名', '标题', '内容'],
             columns: [
+                signColumn(),
                 titleColumn(),
                 contentColumn(),
             ],
             minSpareRows: EMPTY_LEFT_ROWS,
             minRows: EMPTY_LEFT_ROWS,
             ...sharedHotSettings(),
-            stretchH: 'all',
+            stretchH: useSign() ? 'last' : 'all',
+            hiddenColumns: {
+                columns: useSign() ? [] : [0],
+                indicators: false,
+                copyPasteEnabled: false,
+            },
             contextMenu: buildContextMenu(() => leftHot),
             afterGetColHeader(col, TH) {
                 TH.classList.add('ht-sc-header');
@@ -907,6 +1017,14 @@
                 scheduleRefresh();
             },
             afterRemoveRow() {
+                persistDraft();
+                scheduleRefresh();
+            },
+            afterUndo() {
+                persistDraft();
+                scheduleRefresh();
+            },
+            afterRedo() {
                 persistDraft();
                 scheduleRefresh();
             },
@@ -943,19 +1061,27 @@
         el.btnClearNo.hidden = !confirming;
     }
 
-    function clearAll() {
+    function clearCopyContent() {
+        pendingRefresh = false;
+        clearTimeout(refreshTimer);
         suppressPersist = true;
-        el.projectName.value = '';
         el.targetCount.value = String(DEFAULT_TARGET);
         el.templateSets.value = String(DEFAULT_SETS);
-        if (leftHot) leftHot.loadData(emptyLeftGrid());
-        store.draft = defaultStore().draft;
+        if (leftHot) {
+            try { leftHot.destroyEditor(true); } catch (e) { /* ignore */ }
+            try { leftHot.deselectCell(); } catch (e) { /* ignore */ }
+            leftHot.loadData(emptyLeftGrid());
+        }
+        store.draft.projectName = el.projectName.value;
+        store.draft.filename = filenameInputValue();
+        store.draft.filenameTouched = filenameTouched;
+        store.draft.targetCount = DEFAULT_TARGET;
+        store.draft.templateSets = DEFAULT_SETS;
+        store.draft.originalRows = [];
         saveStore();
-        filenameTouched = false;
         suppressPersist = false;
-        updateFilenameBox(true);
-        refreshRight();
-        showToast('已清空全部内容');
+        refreshRight(true);
+        showToast('已清空文案内容');
     }
 
     function exportCsv() {
@@ -970,13 +1096,18 @@
             el.filenameBox.focus();
             return;
         }
-        const original = readOriginalPairs();
-        if (!original.length) {
-            showToast('请先输入原始文案', true);
+        const info = inspectLeftRows();
+        const target = getTargetCount();
+        updateAllocHint(info, target);
+        if (hasAllocErrors(info, target) && !window.confirm('有报错，是否继续导出?')) {
+            return;
+        }
+        if (!info.complete.length) {
+            showToast(el.allocHint.textContent || '请先输入原始文案', true);
             return;
         }
         const sets = getTemplateSets();
-        const pairs = takeTargetPairs(original, getTargetCount());
+        const pairs = takeTargetPairs(info.complete, target);
         const grid = pairsToGrid(pairs, sets);
         if (!grid.length) {
             showToast('分配结果为空，请检查原始文案', true);
@@ -1081,6 +1212,35 @@
         showToast('当天记录已清除，下一条为 A1');
     }
 
+    function updateSignToggleUi() {
+        if (!el.signToggle) return;
+        el.signToggle.value = useSign() ? '1' : '0';
+    }
+
+    function applySignMode() {
+        if (el.app) el.app.classList.toggle('no-sign', !useSign());
+        updateSignToggleUi();
+        if (leftHot && !leftHot.isDestroyed) {
+            leftHot.updateSettings({
+                hiddenColumns: {
+                    columns: useSign() ? [] : [0],
+                    indicators: false,
+                    copyPasteEnabled: false,
+                },
+                stretchH: useSign() ? 'last' : 'all',
+            });
+            try { leftHot.refreshDimensions(); } catch (e) { /* ignore */ }
+        }
+    }
+
+    function setUseSign(on) {
+        store.draft.useSignature = !!on;
+        applySignMode();
+        persistDraft();
+        refreshRight(true);
+        requestAnimationFrame(refreshTablesSize);
+    }
+
     function restoreDraft() {
         const draft = store.draft || {};
         suppressPersist = true;
@@ -1088,8 +1248,11 @@
         el.targetCount.value = String(clampInt(draft.targetCount, 1, MAX_TARGET, DEFAULT_TARGET));
         el.templateSets.value = String(clampInt(draft.templateSets, 1, MAX_SETS, DEFAULT_SETS));
         filenameTouched = !!draft.filenameTouched;
+        if (typeof draft.useSignature !== 'boolean') draft.useSignature = false;
+        store.draft.useSignature = draft.useSignature;
         if (leftHot) leftHot.loadData(ensureLeftSpare(draft.originalRows));
         if (filenameTouched && draft.filename) el.filenameBox.value = draft.filename;
+        applySignMode();
         suppressPersist = false;
         store.nextIndex = nextSerialIndex();
         updateFilenameBox();
@@ -1115,6 +1278,11 @@
             el.templateSets.value = String(getTemplateSets());
             scheduleRefresh();
         });
+        if (el.signToggle) {
+            el.signToggle.addEventListener('change', () => {
+                setUseSign(el.signToggle.value === '1');
+            });
+        }
         el.btnIncrement.addEventListener('click', incrementSerial);
         el.btnCopyFilename.addEventListener('click', async () => {
             const name = exportBasename();
@@ -1137,7 +1305,7 @@
         el.btnClear.addEventListener('click', () => setClearPhase('confirm'));
         el.btnClearNo.addEventListener('click', () => setClearPhase('idle'));
         el.btnClearYes.addEventListener('click', () => {
-            clearAll();
+            clearCopyContent();
             setClearPhase('idle');
         });
         el.btnExport.addEventListener('click', exportCsv);
@@ -1151,5 +1319,7 @@
     renderRightHot();
     bindUi();
     restoreDraft();
+    window.__leftHot = leftHot;
+    window.__rightHot = rightHot;
     requestAnimationFrame(refreshTablesSize);
 })();

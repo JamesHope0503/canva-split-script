@@ -24,11 +24,11 @@ if not exist "%PY%" (
   )
 )
 
-start "" /D "%~dp0" "%PY%" "%~dp0app.py"
-
-ping 127.0.0.1 -n 3 >nul
-if exist "%LOG%" (
-  echo Launch failed. See launch.log
-  type "%LOG%"
-  pause
+"%PY%" "%~dp0app.py"
+if errorlevel 1 (
+  if exist "%LOG%" (
+    echo Launch failed. See launch.log
+    type "%LOG%"
+    pause
+  )
 )

@@ -1,16 +1,32 @@
 import ctypes
+import os
 import sys
 import threading
 import time
+from ctypes import wintypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import webview
 
-APP_TITLE = "分割Canva文案 · 核对v37"
+APP_TITLE = "分割Canva文案 · v1.2.0"
 APP_W = 1200
 APP_H = 1000
-ROOT = Path(__file__).resolve().parent
+
+
+def resource_root():
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    return Path(__file__).resolve().parent
+
+
+def writable_root():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+ROOT = resource_root()
 GWL_STYLE = -16
 WS_THICKFRAME = 0x00040000
 WS_MAXIMIZEBOX = 0x00010000
@@ -147,35 +163,51 @@ class JsApi:
         return {"ok": True, "path": str(path)}
 
 
+def _window_pid(hwnd):
+    pid = ctypes.c_ulong(0)
+    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return pid.value
+
+
+def _force_kill_pid(pid):
+    if not pid or pid == os.getpid():
+        return
+    PROCESS_TERMINATE = 0x0001
+    handle = ctypes.windll.kernel32.OpenProcess(PROCESS_TERMINATE, False, pid)
+    if not handle:
+        return
+    ctypes.windll.kernel32.TerminateProcess(handle, 0)
+    ctypes.windll.kernel32.CloseHandle(handle)
+
+
 def close_existing():
     user32 = ctypes.windll.user32
-    titles = (
-        APP_TITLE,
-        "分割Canva文案 · 核对v36",
-        "分割Canva文案 · 核对v35",
-        "分割Canva文案 · 核对v34",
-        "分割Canva文案 · 核对v33",
-        "分割Canva文案 · 核对v32",
-        "分割Canva文案 · 核对v31",
-        "分割Canva文案 · 核对v30",
-        "分割Canva文案 · 核对v29",
-        "分割Canva文案 · 核对v28",
-        "分割Canva文案 · 核对v27",
-        "分割Canva文案 · 核对v26",
-        "分割Canva文案 · 核对v25",
-        "分割Canva文案 · 核对v24",
-        "分割Canva文案",
-        "分割文案",
-    )
-    for title in titles:
-        hwnd = user32.FindWindowW(None, title)
-        if not hwnd:
-            continue
+    found = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _lparam):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        buf = ctypes.create_unicode_buffer(512)
+        user32.GetWindowTextW(hwnd, buf, 512)
+        title = buf.value or ""
+        if title.startswith("分割Canva文案") or title == "分割文案":
+            found.append(hwnd)
+        return True
+
+    user32.EnumWindows(each, 0)
+    for hwnd in found:
+        pid = _window_pid(hwnd)
         user32.PostMessageW(hwnd, 0x0010, 0, 0)
-        for _ in range(25):
-            time.sleep(0.1)
-            if not user32.FindWindowW(None, title):
+        closed = False
+        for _ in range(8):
+            time.sleep(0.05)
+            if not user32.IsWindow(hwnd):
+                closed = True
                 break
+        if not closed:
+            _force_kill_pid(pid)
+    time.sleep(0.2)
 
 
 def main():
@@ -219,7 +251,7 @@ def main():
 
 
 if __name__ == "__main__":
-    log_path = ROOT / "launch.log"
+    log_path = writable_root() / "launch.log"
     try:
         main()
     except Exception:
