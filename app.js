@@ -1,4 +1,7 @@
 (function () {
+    const APP_VERSION = '1.4.0';
+    document.title = `分割Canva文案 · v${APP_VERSION}`;
+
     const STORAGE_KEY = 'canva-script.split-script.v2';
     const LEGACY_STORAGE_KEYS = [
         'canva-script.split-script.v1',
@@ -454,6 +457,10 @@
 
     function anyEditorOpen() {
         return isHotEditorOpen(leftHot) || isHotEditorOpen(rightHot);
+    }
+
+    function refreshLeftTargetRows() {
+        if (leftHot && !leftHot.isDestroyed) leftHot.render();
     }
 
     function applyRightTable() {
@@ -1107,6 +1114,9 @@
             afterGetColHeader(col, TH) {
                 TH.classList.add('ht-sc-header');
             },
+            afterRenderer(td, row) {
+                td.classList.toggle('ht-target-row', row < getTargetCount());
+            },
             afterChange(changes, source) {
                 if (!changes || source === 'loadData') return;
                 persistDraft();
@@ -1370,10 +1380,16 @@
             filenameTouched = true;
             persistDraft();
         });
-        el.targetCount.addEventListener('input', scheduleRefresh);
+        el.targetCount.addEventListener('input', () => {
+            persistDraft();
+            refreshLeftTargetRows();
+            scheduleRefresh();
+        });
         el.templateSets.addEventListener('input', scheduleRefresh);
         el.targetCount.addEventListener('change', () => {
             el.targetCount.value = String(getTargetCount());
+            persistDraft();
+            refreshLeftTargetRows();
             scheduleRefresh();
         });
         el.templateSets.addEventListener('change', () => {

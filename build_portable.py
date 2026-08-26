@@ -14,9 +14,9 @@ DIST_EXE = DIST_DIR / "SplitCanva.exe"
 
 def app_version():
     text = (ROOT / "app.py").read_text(encoding="utf-8")
-    match = re.search(r'APP_TITLE\s*=\s*".*?v(\d+\.\d+\.\d+)"', text)
+    match = re.search(r'APP_VERSION\s*=\s*"(\d+\.\d+\.\d+)"', text)
     if not match:
-        raise SystemExit("APP_TITLE version not found in app.py")
+        raise SystemExit("APP_VERSION not found in app.py")
     return match.group(1)
 
 

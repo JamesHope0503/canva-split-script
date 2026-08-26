@@ -569,6 +569,10 @@ body.modal-open .handsontable .ht_clone_top_left_corner {
     background: var(--warm-head) !important;
 }
 
+#leftHot td.ht-target-row {
+    background: #e8f6fa;
+}
+
 .handsontable,
 .handsontable td,
 .handsontable th,
