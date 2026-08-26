@@ -357,6 +357,11 @@
         return useSign() ? ['', '', ''] : ['', ''];
     }
 
+    function leftTableWidth() {
+        const cols = (useSign() ? COL_SIGN_W : 0) + COL_TITLE_W + COL_CONTENT_W;
+        return 36 + cols;
+    }
+
     function rightTableWidth(sets) {
         const pairW = (useSign() ? COL_SIGN_W : 0) + COL_TITLE_W + COL_CONTENT_W;
         return 36 + Math.max(1, Number(sets) || 1) * pairW;
@@ -997,7 +1002,9 @@
             minSpareRows: EMPTY_LEFT_ROWS,
             minRows: EMPTY_LEFT_ROWS,
             ...sharedHotSettings(),
-            stretchH: useSign() ? 'last' : 'all',
+            stretchH: 'none',
+            width: leftTableWidth(),
+            height: 'auto',
             hiddenColumns: {
                 columns: useSign() ? [] : [0],
                 indicators: false,
@@ -1227,7 +1234,9 @@
                     indicators: false,
                     copyPasteEnabled: false,
                 },
-                stretchH: useSign() ? 'last' : 'all',
+                stretchH: 'none',
+                width: leftTableWidth(),
+                height: 'auto',
             });
             try { leftHot.refreshDimensions(); } catch (e) { /* ignore */ }
         }

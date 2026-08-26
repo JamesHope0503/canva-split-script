@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
     <title>分割Canva文案 · v1.2.0</title>
     <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260826f" />
+    <link rel="stylesheet" href="./styles.css?v=20260826j" />
 </head>
 <body>
     <div class="app no-sign" id="app">
@@ -19,7 +19,7 @@
                     <span class="field-label">名称</span>
                     <div class="name-row">
                         <input id="projectName" type="text" maxlength="80" placeholder="XXX" autocomplete="off" />
-                        <button type="button" class="btn btn-primary btn-increment" id="btnIncrement" title="把当前流水号写入记录并加一">递增流水号</button>
+                        <button type="button" class="btn btn-increment" id="btnIncrement" title="把当前流水号写入记录并加一">递增流水号</button>
                     </div>
                 </label>
                 <div class="field field-filename">
@@ -70,7 +70,9 @@
                             <span>原始文案</span>
                             <span class="subhead-meta" id="leftCount">0 条</span>
                         </div>
-                        <div id="leftHot" class="hot-box"></div>
+                        <div class="hot-box hot-box-left" id="leftScroll">
+                            <div id="leftHot"></div>
+                        </div>
                     </aside>
                     <main class="alloc-right">
                         <div class="subhead">
@@ -115,6 +117,6 @@
     <div class="toast" id="toast"></div>
 
     <script src="./vendor/handsontable.full.min.js"></script>
-    <script src="./app.js?v=20260826f"></script>
+    <script src="./app.js?v=20260826g"></script>
 </body>
 </html>

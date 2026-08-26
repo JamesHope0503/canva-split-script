@@ -117,12 +117,19 @@ body {
     min-width: 0;
 }
 
-.btn-increment {
+.btn.btn-increment {
     flex: 0 0 auto;
     height: 40px;
     line-height: 38px;
     padding: 0 14px;
     white-space: nowrap;
+    background: #c8eef2;
+    border: 1px solid #7ecad3;
+    color: #0f6b73;
+}
+
+.btn.btn-increment:hover {
+    background: #a9e4ea;
 }
 
 .field {
@@ -262,14 +269,14 @@ body {
     min-width: 0;
     min-height: 0;
     display: grid;
-    grid-template-columns: 460px 1fr;
+    grid-template-columns: 424px 1fr;
     gap: 12px;
     align-items: stretch;
     overflow: hidden;
 }
 
 .app.no-sign .alloc-tables {
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 324px 1fr;
 }
 
 .alloc-left,
@@ -313,32 +320,56 @@ body {
     position: relative;
 }
 
+.hot-box-left,
 .hot-box-right {
     flex: 0 0 auto;
-    width: 676px;
     height: 665px;
-    overflow: scroll;
     scrollbar-width: auto;
     scrollbar-color: #6b8f96 #e8f0f2;
+}
+
+.hot-box-left {
+    width: 424px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.app.no-sign .hot-box-left {
+    width: 324px;
+}
+
+.hot-box-right {
+    width: 676px;
+    overflow: scroll;
 }
 
 .app.no-sign .hot-box-right {
     width: 776px;
 }
 
+.hot-box-left::-webkit-scrollbar,
 .hot-box-right::-webkit-scrollbar {
     width: 16px;
-    height: 16px;
     display: block;
     background: #e8f0f2;
 }
 
+.hot-box-left::-webkit-scrollbar {
+    height: 0;
+}
+
+.hot-box-right::-webkit-scrollbar {
+    height: 16px;
+}
+
+.hot-box-left::-webkit-scrollbar-thumb,
 .hot-box-right::-webkit-scrollbar-thumb {
     background: #6b8f96;
     border-radius: 8px;
     border: 2px solid #e8f0f2;
 }
 
+.hot-box-left::-webkit-scrollbar-track,
 .hot-box-right::-webkit-scrollbar-track {
     background: #e8f0f2;
 }
@@ -347,6 +378,7 @@ body {
     background: #e8f0f2;
 }
 
+#leftHot,
 #rightHot {
     width: max-content;
     height: auto;
@@ -567,12 +599,5 @@ table.app-handsontable tbody td {
     vertical-align: middle !important;
 }
 
-#leftHot .ht_master .wtHolder,
-#leftHot .ht_clone_left .wtHolder,
-#leftHot .ht_clone_inline_start .wtHolder,
-#leftHot .ht_clone_top .wtHolder,
-#leftHot .ht_clone_top_inline_start_corner .wtHolder {
-    overflow-x: hidden !important;
-}
 
 
