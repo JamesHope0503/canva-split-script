@@ -1,5 +1,5 @@
 (function () {
-    const APP_VERSION = '1.4.0';
+    const APP_VERSION = '1.4.1';
     document.title = `分割Canva文案 · v${APP_VERSION}`;
 
     const STORAGE_KEY = 'canva-script.split-script.v2';
@@ -10,8 +10,8 @@
     const DEFAULT_TARGET = 1;
     const DEFAULT_SETS = 1;
     const EMPTY_LEFT_ROWS = 10;
-    const MAX_SETS = 20;
-    const MAX_TARGET = 999;
+    const MAX_SETS = 99;
+    const MAX_TARGET = 99;
     const ROW_H = 35;
     const COL_SIGN_W = 100;
     const COL_TITLE_W = 120;
@@ -1395,6 +1395,10 @@
         el.templateSets.addEventListener('change', () => {
             el.templateSets.value = String(getTemplateSets());
             scheduleRefresh();
+        });
+        [el.targetCount, el.templateSets].forEach((input) => {
+            input.addEventListener('focus', () => input.select());
+            input.addEventListener('mouseup', (event) => event.preventDefault());
         });
         if (el.signToggle) {
             el.signToggle.addEventListener('change', () => {

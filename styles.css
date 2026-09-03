@@ -5,7 +5,7 @@
 :root {
     --app-w: 1200px;
     --app-h: 1000px;
-    --head-h: 36px;
+    --head-h: 42px;
     --cyan: #2db7c4;
     --cyan-deep: #1a8f9a;
     --cyan-soft: #d7f3f6;
@@ -95,6 +95,13 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.panel-head .btn {
+    height: auto;
+    min-height: 0;
+    padding: 7px 14px;
+    line-height: 1.2;
 }
 
 .project-body {
@@ -262,6 +269,19 @@ body {
 
 .field-param-inline input {
     width: 88px;
+}
+
+.field-param-inline input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.field-param-inline input[type="number"]::-webkit-outer-spin-button,
+.field-param-inline input[type="number"]::-webkit-inner-spin-button {
+    appearance: none;
+    -webkit-appearance: none;
+    display: none;
+    margin: 0;
 }
 
 .alloc-tables {

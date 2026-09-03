@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
     <title>分割Canva文案</title>
     <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260826o" />
+    <link rel="stylesheet" href="./styles.css?v=20260827d" />
 </head>
 <body>
     <div class="app" id="app">
@@ -49,11 +49,11 @@
                 <div class="alloc-toolbar">
                     <label class="field field-param field-param-inline">
                         <span class="field-label">目标几个</span>
-                        <input id="targetCount" type="number" min="1" max="999" step="1" value="1" />
+                        <input id="targetCount" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="1" autocomplete="off" />
                     </label>
                     <label class="field field-param field-param-inline">
                         <span class="field-label">模板几套</span>
-                        <input id="templateSets" type="number" min="1" max="20" step="1" value="1" />
+                        <input id="templateSets" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="1" autocomplete="off" />
                     </label>
                     <label class="field field-param field-param-inline">
                         <span class="field-label">加署名列</span>
@@ -117,6 +117,6 @@
     <div class="toast" id="toast"></div>
 
     <script src="./vendor/handsontable.full.min.js"></script>
-    <script src="./app.js?v=20260826o"></script>
+    <script src="./app.js?v=20260827a"></script>
 </body>
 </html>
