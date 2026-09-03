@@ -345,6 +345,13 @@ body {
     padding: 2px 10px;
     line-height: 1.2;
     font-size: 13px;
+    background: #dceff2;
+    border-color: #9ed3da;
+    color: #0f6b73;
+}
+
+.btn.btn-subhead:hover {
+    background: #c8e8ed;
 }
 
 .subhead-meta {
