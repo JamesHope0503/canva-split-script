@@ -4,7 +4,7 @@
 
 :root {
     --app-w: 1200px;
-    --app-h: 1000px;
+    --app-h: 1200px;
     --head-h: 42px;
     --cyan: #2db7c4;
     --cyan-deep: #1a8f9a;
@@ -324,6 +324,29 @@ body {
     color: #255860;
 }
 
+.subhead-left {
+    flex-basis: 28px;
+    height: 28px;
+    gap: 8px;
+}
+
+.subhead-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.btn.btn-subhead {
+    height: auto;
+    min-height: 0;
+    padding: 2px 10px;
+    line-height: 1.2;
+    font-size: 13px;
+}
+
 .subhead-meta {
     font-weight: 600;
     color: var(--muted);
@@ -343,7 +366,7 @@ body {
 .hot-box-left,
 .hot-box-right {
     flex: 0 0 auto;
-    height: 665px;
+    height: 865px;
     scrollbar-width: auto;
     scrollbar-color: #6b8f96 #e8f0f2;
 }

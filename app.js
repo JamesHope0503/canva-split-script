@@ -1,5 +1,5 @@
 (function () {
-    const APP_VERSION = '1.4.1';
+    const APP_VERSION = '1.5.0';
     document.title = `分割Canva文案 · v${APP_VERSION}`;
 
     const STORAGE_KEY = 'canva-script.split-script.v2';
@@ -9,7 +9,8 @@
     ];
     const DEFAULT_TARGET = 1;
     const DEFAULT_SETS = 1;
-    const EMPTY_LEFT_ROWS = 10;
+    const DEFAULT_LEFT_ROWS = 23;
+    const LEFT_SPARE_ROWS = 7;
     const MAX_SETS = 99;
     const MAX_TARGET = 99;
     const ROW_H = 35;
@@ -32,6 +33,8 @@
         btnClear: document.getElementById('btnClear'),
         btnClearYes: document.getElementById('btnClearYes'),
         btnClearNo: document.getElementById('btnClearNo'),
+        btnClearSign: document.getElementById('btnClearSign'),
+        btnClearTitleContent: document.getElementById('btnClearTitleContent'),
         btnExport: document.getElementById('btnExport'),
         historyMask: document.getElementById('historyMask'),
         historyDrawer: document.getElementById('historyDrawer'),
@@ -52,6 +55,8 @@
     let store = loadStore();
     let filenameTouched = false;
     let pendingRefresh = false;
+    let syncingLeftRows = false;
+    let leftSyncTimer = 0;
 
     function defaultStore() {
         return {
@@ -215,8 +220,25 @@
         return clampInt(el.templateSets.value, 1, MAX_SETS, DEFAULT_SETS);
     }
 
+    function leftMinRows() {
+        return Math.max(DEFAULT_LEFT_ROWS, getTargetCount());
+    }
+
+    function lastFilledRowIndex(rows) {
+        let last = -1;
+        (rows || []).forEach((row, index) => {
+            if (isFilledRow(row)) last = index;
+        });
+        return last;
+    }
+
+    function desiredLeftRowCount(rows) {
+        const filledSpan = lastFilledRowIndex(rows) + 1;
+        return Math.max(leftMinRows(), filledSpan + LEFT_SPARE_ROWS);
+    }
+
     function emptyLeftGrid() {
-        return Array.from({ length: EMPTY_LEFT_ROWS }, () => ['', '', '']);
+        return Array.from({ length: leftMinRows() }, () => ['', '', '']);
     }
 
     function normalizeLeftRow(row) {
@@ -459,7 +481,36 @@
         return isHotEditorOpen(leftHot) || isHotEditorOpen(rightHot);
     }
 
+    function syncLeftRowCount() {
+        if (!leftHot || leftHot.isDestroyed || syncingLeftRows) return;
+        const want = desiredLeftRowCount(leftHot.getSourceData());
+        const have = leftHot.countRows();
+        if (have === want) return;
+        syncingLeftRows = true;
+        try {
+            if (have < want) {
+                leftHot.alter('insert_row_below', Math.max(0, have - 1), want - have);
+            } else {
+                leftHot.alter('remove_row', want, have - want);
+            }
+        } finally {
+            syncingLeftRows = false;
+        }
+    }
+
+    function scheduleLeftTableMaintenance() {
+        if (syncingLeftRows) return;
+        clearTimeout(leftSyncTimer);
+        leftSyncTimer = setTimeout(() => {
+            if (syncingLeftRows) return;
+            syncLeftRowCount();
+            persistDraft();
+            scheduleRefresh();
+        }, 0);
+    }
+
     function refreshLeftTargetRows() {
+        syncLeftRowCount();
         if (leftHot && !leftHot.isDestroyed) leftHot.render();
     }
 
@@ -525,10 +576,8 @@
             : [];
         const filled = list.filter(isFilledRow);
         const out = filled.length ? filled.slice() : [];
-        while (out.length < filled.length + EMPTY_LEFT_ROWS) out.push(['', '', '']);
-        if (!out.length) {
-            while (out.length < EMPTY_LEFT_ROWS) out.push(['', '', '']);
-        }
+        const min = desiredLeftRowCount(out);
+        while (out.length < min) out.push(['', '', '']);
         return out;
     }
 
@@ -1099,8 +1148,8 @@
                 titleColumn(),
                 contentColumn(),
             ],
-            minSpareRows: EMPTY_LEFT_ROWS,
-            minRows: EMPTY_LEFT_ROWS,
+            minSpareRows: 0,
+            minRows: leftMinRows(),
             ...sharedHotSettings(),
             stretchH: 'none',
             width: leftTableWidth(),
@@ -1118,25 +1167,22 @@
                 td.classList.toggle('ht-target-row', row < getTargetCount());
             },
             afterChange(changes, source) {
-                if (!changes || source === 'loadData') return;
-                persistDraft();
-                scheduleRefresh();
+                if (!changes || source === 'loadData' || syncingLeftRows) return;
+                scheduleLeftTableMaintenance();
             },
             afterCreateRow() {
-                persistDraft();
-                scheduleRefresh();
+                if (syncingLeftRows) return;
+                scheduleLeftTableMaintenance();
             },
             afterRemoveRow() {
-                persistDraft();
-                scheduleRefresh();
+                if (syncingLeftRows) return;
+                scheduleLeftTableMaintenance();
             },
             afterUndo() {
-                persistDraft();
-                scheduleRefresh();
+                scheduleLeftTableMaintenance();
             },
             afterRedo() {
-                persistDraft();
-                scheduleRefresh();
+                scheduleLeftTableMaintenance();
             },
             ...tableFocusHooks(),
         });
@@ -1191,7 +1237,21 @@
         saveStore();
         suppressPersist = false;
         refreshRight(true);
-        showToast('已清空文案内容');
+        showToast('已清空设置/表格内容');
+    }
+
+    function clearLeftColumns(cols, message) {
+        if (!leftHot || leftHot.isDestroyed) return;
+        try { leftHot.destroyEditor(true); } catch (e) { /* ignore */ }
+        const rows = leftHot.countRows();
+        const changes = [];
+        for (let r = 0; r < rows; r += 1) {
+            cols.forEach((col) => changes.push([r, col, '']));
+        }
+        if (changes.length) leftHot.setDataAtCell(changes, 'Clear.column');
+        persistDraft();
+        scheduleRefresh();
+        showToast(message);
     }
 
     function exportCsv() {
@@ -1430,6 +1490,16 @@
             clearCopyContent();
             setClearPhase('idle');
         });
+        if (el.btnClearSign) {
+            el.btnClearSign.addEventListener('click', () => {
+                clearLeftColumns([0], '已清空署名');
+            });
+        }
+        if (el.btnClearTitleContent) {
+            el.btnClearTitleContent.addEventListener('click', () => {
+                clearLeftColumns([1, 2], '已清空标题/内容');
+            });
+        }
         el.btnExport.addEventListener('click', exportCsv);
         document.addEventListener('keydown', (ev) => {
             if (ev.key === 'Escape' && !el.historyDrawer.hidden) closeHistory();

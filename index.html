@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1200, height=1000, initial-scale=1" />
+    <meta name="viewport" content="width=1200, height=1200, initial-scale=1" />
     <title>分割Canva文案</title>
     <link rel="stylesheet" href="./vendor/handsontable.full.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=20260827d" />
+    <link rel="stylesheet" href="./styles.css?v=20260903b" />
 </head>
 <body>
     <div class="app" id="app">
@@ -37,7 +37,7 @@
                 <h1>文案分配</h1>
                 <div class="panel-head-actions">
                     <div class="clear-group" id="clearGroup">
-                        <button type="button" class="btn btn-ghost" id="btnClear">清空文案内容</button>
+                        <button type="button" class="btn btn-ghost" id="btnClear">清空设置/表格内容</button>
                         <button type="button" class="btn btn-danger" id="btnClearYes" hidden>确认清空</button>
                         <button type="button" class="btn btn-ghost" id="btnClearNo" hidden>取消</button>
                     </div>
@@ -66,8 +66,12 @@
                 </div>
                 <div class="alloc-tables">
                     <aside class="alloc-left">
-                        <div class="subhead">
+                        <div class="subhead subhead-left">
                             <span>原始文案</span>
+                            <div class="subhead-actions">
+                                <button type="button" class="btn btn-ghost btn-subhead" id="btnClearSign">清空署名</button>
+                                <button type="button" class="btn btn-ghost btn-subhead" id="btnClearTitleContent">清空标题/内容</button>
+                            </div>
                             <span class="subhead-meta" id="leftCount">0 条</span>
                         </div>
                         <div class="hot-box hot-box-left" id="leftScroll">
@@ -117,6 +121,6 @@
     <div class="toast" id="toast"></div>
 
     <script src="./vendor/handsontable.full.min.js"></script>
-    <script src="./app.js?v=20260827a"></script>
+    <script src="./app.js?v=20260903f"></script>
 </body>
 </html>

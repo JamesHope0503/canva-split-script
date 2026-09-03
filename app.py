@@ -9,10 +9,10 @@ from pathlib import Path
 
 import webview
 
-APP_VERSION = "1.4.1"
+APP_VERSION = "1.5.0"
 APP_TITLE = f"分割Canva文案 · v{APP_VERSION}"
 APP_W = 1200
-APP_H = 1000
+APP_H = 1200
 
 
 def resource_root():
