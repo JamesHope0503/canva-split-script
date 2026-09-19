@@ -1,5 +1,5 @@
 (function () {
-    const APP_VERSION = '1.5.1';
+    const APP_VERSION = '1.5.2';
     document.title = `分割Canva文案 · v${APP_VERSION}`;
 
     const STORAGE_KEY = 'canva-script.split-script.v2';
@@ -850,7 +850,7 @@
                 }
                 continue;
             }
-            if (ch === '"') {
+            if (ch === '"' && cell === '') {
                 inQuotes = true;
                 continue;
             }
@@ -880,13 +880,41 @@
         return !!(grid && grid.length === 1 && grid[0] && grid[0].length === 1);
     }
 
+    function quoteCount(grid) {
+        let n = 0;
+        (grid || []).forEach((row) => {
+            (row || []).forEach((cell) => {
+                const s = String(cell == null ? '' : cell);
+                for (let i = 0; i < s.length; i += 1) {
+                    if (s.charAt(i) === '"') n += 1;
+                }
+            });
+        });
+        return n;
+    }
+
+    function sameGridShape(a, b) {
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i += 1) {
+            if ((a[i] || []).length !== (b[i] || []).length) return false;
+        }
+        return true;
+    }
+
+    function pickPasteGrid(preferred, other) {
+        if (!preferred) return other;
+        if (!other) return preferred;
+        if (sameGridShape(preferred, other) && quoteCount(other) > quoteCount(preferred)) return other;
+        return preferred;
+    }
+
     function resolvePasteGrid(plain, html) {
         const fromHtml = parseHtmlTable(html);
-        // 单格 HTML 优先：单元格内换行不能被 text/plain 拆成多行
-        if (isSingleCellGrid(fromHtml)) return fromHtml;
         const fromPlain = parseSheetClip(plain);
+        // 单格 HTML 优先：单元格内换行不能被 text/plain 拆成多行
+        if (isSingleCellGrid(fromHtml)) return pickPasteGrid(fromHtml, fromPlain);
         if (isSingleCellGrid(fromPlain)) return fromPlain;
-        if (isMultiCellGrid(fromPlain)) return fromPlain;
+        if (isMultiCellGrid(fromPlain)) return pickPasteGrid(fromPlain, fromHtml);
         if (fromHtml && isMultiCellGrid(fromHtml)) return fromHtml;
         if (fromHtml && fromHtml.length && fromHtml[0] && fromHtml[0][0] && !String(plain || '').trim()) {
             return fromHtml;

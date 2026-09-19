@@ -9,7 +9,7 @@ from pathlib import Path
 
 import webview
 
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.5.2"
 APP_TITLE = f"分割Canva文案 · v{APP_VERSION}"
 APP_W = 1200
 APP_H = 1200
