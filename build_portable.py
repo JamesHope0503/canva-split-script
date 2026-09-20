@@ -27,7 +27,7 @@ def run(args):
 
 def main():
     version = app_version()
-    exe_name = f"分割Canva文案-v{version}.exe"
+    exe_name = f"Canva分割文案-v{version}.exe"
     dest = RELEASE_DIR / exe_name
 
     python = str(PY if PY.exists() else sys.executable)

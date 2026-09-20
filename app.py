@@ -9,8 +9,8 @@ from pathlib import Path
 
 import webview
 
-APP_VERSION = "1.5.2"
-APP_TITLE = f"分割Canva文案 · v{APP_VERSION}"
+APP_VERSION = "1.5.3"
+APP_TITLE = f"Canva分割文案 · v{APP_VERSION}"
 APP_W = 1200
 APP_H = 1200
 
@@ -192,7 +192,7 @@ def close_existing():
         buf = ctypes.create_unicode_buffer(512)
         user32.GetWindowTextW(hwnd, buf, 512)
         title = buf.value or ""
-        if title.startswith("分割Canva文案") or title == "分割文案":
+        if title.startswith("Canva分割文案") or title == "分割文案":
             found.append(hwnd)
         return True
 

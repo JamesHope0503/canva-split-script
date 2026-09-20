@@ -1,6 +1,6 @@
 (function () {
-    const APP_VERSION = '1.5.2';
-    document.title = `分割Canva文案 · v${APP_VERSION}`;
+    const APP_VERSION = '1.5.3';
+    document.title = `Canva分割文案 · v${APP_VERSION}`;
 
     const STORAGE_KEY = 'canva-script.split-script.v2';
     const LEGACY_STORAGE_KEYS = [
